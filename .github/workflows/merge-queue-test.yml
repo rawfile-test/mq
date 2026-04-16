@@ -7,7 +7,7 @@ on:
     types: [checks_requested]
 
 permissions:
-  contents: read
+  contents: 'read'
 
 jobs:
   pr-lint:
@@ -28,6 +28,7 @@ jobs:
       - name: PR test step
         run: echo "Running PR tests"
 
+
   merge_queue_skipper:
     permissions:
       contents: read
@@ -35,16 +36,17 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'merge_group'
     outputs:
-      skip: ${{ steps.merge-queue-ci-skipper.outputs.skip-check }}
+      skip: '${{ steps.merge-queue-ci-skipper.outputs.skip-check }}'
     steps:
-      - id: merge-queue-ci-skipper
+      - uses: actions/checkout@v6
+      - id: 'merge-queue-ci-skipper'
         uses: ./.github/actions/merge-queue-ci-skipper
         with:
-          secret: ${{ secrets.GITHUB_TOKEN }}
+          secret: ${{ secrets.MERGE_Q_SKIPPER }}
           exclude-checks: merge-queue-integration
 
   merge-queue-validate:
-    needs: [merge_queue_skipper]
+    needs: [ merge_queue_skipper ]
     if: >
       !cancelled() && (
         github.event_name == 'pull_request' ||
@@ -69,3 +71,18 @@ jobs:
       - name: Merge queue integration step
         run: echo "Running merge queue integration checks"
       - run: sleep 30
+
+  ci:
+    needs:
+      - merge_queue_skipper
+      - merge-queue-validate
+      - merge-queue-integration
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI succeeded
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            exit 1
+          fi
+          exit 0
