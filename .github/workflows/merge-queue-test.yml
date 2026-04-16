@@ -68,6 +68,7 @@ jobs:
       - merge_queue_skipper
       - merge-queue-validate
       - merge-queue-integration
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
     steps:
       - run: echo "ok"
