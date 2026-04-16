@@ -35,6 +35,7 @@ jobs:
     outputs:
       skip: '${{ steps.merge-queue-ci-skipper.outputs.skip-check }}'
     steps:
+      - uses: actions/checkout@v6
       - id: 'merge-queue-ci-skipper'
         uses: ./.github/actions/merge-queue-ci-skipper
         with:
