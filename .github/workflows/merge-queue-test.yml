@@ -45,12 +45,15 @@ jobs:
   merge-queue-validate:
     needs: [merge_queue_skipper]
     if: >
-      !failure() && (
+      !cancelled() && (
         github.event_name == 'pull_request' ||
-        (github.event_name == 'merge_group' && needs.merge_queue_skipper.outputs.skip == 'false')
+        (github.event_name == 'merge_group' && needs.merge_queue_skipper.outputs.skip != 'true')
       )
     runs-on: ubuntu-latest
     steps:
+      - name: Fail if merge_queue_skipper failed
+        if: needs.merge_queue_skipper.result == 'failure'
+        run: exit 1
       - name: Checkout
         uses: actions/checkout@v4
       - name: Merge queue validation step
