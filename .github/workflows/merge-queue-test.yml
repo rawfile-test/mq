@@ -68,6 +68,6 @@ jobs:
       - merge_queue_skipper
       - merge-queue-validate
       - merge-queue-integration
-    runs-one: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - run: echo "ok"
