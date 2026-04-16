@@ -7,9 +7,7 @@ on:
     types: [checks_requested]
 
 permissions:
-  checks: 'write'
   contents: 'read'
-  statuses: 'write'
 
 jobs:
   pr-lint:
@@ -34,7 +32,6 @@ jobs:
   merge_queue_skipper:
     permissions: 'read-all'
     runs-on: ubuntu-latest
-    if: github.event_name == 'merge_group'
     outputs:
       skip: '${{ steps.merge-queue-ci-skipper.outputs.skip-check }}'
     steps:
@@ -46,10 +43,9 @@ jobs:
   merge-queue-validate:
     needs: [ merge_queue_skipper ]
     if: >
-      always() && (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'merge_group' && needs.merge_queue_skipper.outputs.skip == 'false')
-      )
+        !cancelled() &&
+        (github.event_name == 'pull_request' ||
+        (github.event_name == 'merge_group' && needs.merge_queue_skipper.outputs.skip == 'false'))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -66,3 +62,4 @@ jobs:
       - name: Merge queue integration step
         run: echo "Running merge queue integration checks"
       - run: sleep 30
+
