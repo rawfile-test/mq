@@ -7,7 +7,9 @@ on:
     types: [checks_requested]
 
 permissions:
-  contents: read
+  checks: 'write'
+  contents: 'read'
+  statuses: 'write'
 
 jobs:
   pr-lint:
@@ -39,12 +41,12 @@ jobs:
       - id: 'merge-queue-ci-skipper'
         uses: 'cariad-tech/merge-queue-ci-skipper@1032489e59437862c90a08a2c92809c903883772' # ratchet:cariad-tech/merge-queue-ci-skipper@main
         with:
-          secret: '${{ secrets.GITHUB_TOKEN }}'
+          secret: ${{ secrets.GITHUB_TOKEN }}
 
   merge-queue-validate:
     needs: [ merge_queue_skipper ]
     if: >
-      !failure() && (
+      always() && (
         github.event_name == 'pull_request' ||
         (github.event_name == 'merge_group' && needs.merge_queue_skipper.outputs.skip == 'false')
       )
