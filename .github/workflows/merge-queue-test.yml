@@ -6,6 +6,9 @@ on:
   merge_group:
     types: [checks_requested]
 
+permissions:
+  contents: read
+
 jobs:
   pr-lint:
     if: github.event_name == 'pull_request'
