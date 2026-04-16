@@ -44,9 +44,8 @@ jobs:
     needs: [ merge_queue_skipper ]
     if: >
         !cancelled() &&
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'merge_group' && needs.merge_queue_skipper.outputs.skip == 'false')
-      )
+        (github.event_name == 'pull_request' ||
+        (github.event_name == 'merge_group' && needs.merge_queue_skipper.outputs.skip == 'false'))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
