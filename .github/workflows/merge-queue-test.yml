@@ -38,9 +38,10 @@ jobs:
       skip: ${{ steps.merge-queue-ci-skipper.outputs.skip-check }}
     steps:
       - id: merge-queue-ci-skipper
-        uses: cariad-tech/merge-queue-ci-skipper@1032489e59437862c90a08a2c92809c903883772 # ratchet:cariad-tech/merge-queue-ci-skipper@main
+        uses: ./.github/actions/merge-queue-ci-skipper
         with:
           secret: ${{ secrets.GITHUB_TOKEN }}
+          exclude-checks: merge-queue-integration
 
   merge-queue-validate:
     needs: [merge_queue_skipper]
