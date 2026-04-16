@@ -63,3 +63,11 @@ jobs:
         run: echo "Running merge queue integration checks"
       - run: sleep 30
 
+  ci:
+    needs:
+      - merge_queue_skipper
+      - merge-queue-validate
+      - merge-queue-integration
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "ok"
