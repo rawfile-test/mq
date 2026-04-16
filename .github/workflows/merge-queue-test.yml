@@ -29,7 +29,9 @@ jobs:
         run: echo "Running PR tests"
 
   merge_queue_skipper:
-    permissions: read-all
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     if: github.event_name == 'merge_group'
     outputs:
