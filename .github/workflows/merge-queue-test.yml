@@ -34,7 +34,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - id: merge-queue-ci-skipper
+        uses: cariad-tech/merge-queue-ci-skipper@main
+        with:
+          secret: ${{ secrets.GITHUB_TOKEN }}
       - name: Merge queue validation step
+        if: ${{ steps.merge-queue-ci-skipper.outputs.skip-check != 'true' }}
         run: echo "Running merge queue validation"
 
   merge-queue-integration:
