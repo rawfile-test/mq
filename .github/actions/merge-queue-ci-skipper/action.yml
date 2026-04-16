@@ -1,17 +1,17 @@
 # MIT License
-# 
+#
 # Copyright (c) 2024 CARIAD SE
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -26,6 +26,10 @@ inputs:
   secret:
     description: 'Optional GitHub Secret that can access branch protection rules using the administration:read permission'
     required: false
+  exclude-checks:
+    description: 'Comma-separated list of check names to exclude from the required checks comparison'
+    required: false
+    default: ''
 outputs:
   skip-check:
     description: "Skip Check (boolean)"
@@ -125,6 +129,7 @@ runs:
       uses: actions/github-script@v7
       env:
         SECRET: ${{ inputs.secret }}
+        EXCLUDE_CHECKS: ${{ inputs.exclude-checks }}
       with:
         github-token: ${{ inputs.secret != '' && inputs.secret || github.token }}
         script: |
@@ -146,8 +151,11 @@ runs:
             repo: context.repo.repo,
             branch: "${{ steps.extract-pr-info.outputs.targetBranchName }}",
           });
-          const requiredCheckNames = branchProtection.required_status_checks.contexts;
-          console.log(`requiredCheckNames = ${requiredCheckNames}`);
+          const excludeChecks = (process.env.EXCLUDE_CHECKS || '').split(',').map(s => s.trim()).filter(Boolean);
+          const requiredCheckNames = branchProtection.required_status_checks.contexts
+            .filter(name => !excludeChecks.includes(name));
+          console.log(`excludeChecks = ${excludeChecks}`);
+          console.log(`requiredCheckNames (after exclusions) = ${requiredCheckNames}`);
 
           const { data: checks } = await github.rest.checks.listForRef({
             owner: context.repo.owner,
