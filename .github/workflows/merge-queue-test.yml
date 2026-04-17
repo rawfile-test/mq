@@ -76,7 +76,7 @@ jobs:
       - merge-queue-validate
       - merge-queue-integration
       - int-ci
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - name: CI succeeded
