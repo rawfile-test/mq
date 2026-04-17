@@ -56,7 +56,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Merge queue validation step
         run: echo "Running merge queue validation"
-      - run: sleep 30
 
   merge-queue-integration:
     if: github.event_name == 'merge_group'
@@ -67,11 +66,16 @@ jobs:
       - name: Merge queue integration step
         run: echo "Running merge queue integration checks"
 
+  int-ci:
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/merge-queue-test2.yml
+
   ci:
     needs:
       - merge_queue_skipper
       - merge-queue-validate
       - merge-queue-integration
+      - int-ci
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
