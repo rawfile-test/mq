@@ -67,6 +67,10 @@ jobs:
       - name: Merge queue integration step
         run: echo "Running merge queue integration checks"
 
+  int-ci:
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/merge-queue-test2.yml
+
   ci:
     needs:
       - merge_queue_skipper
@@ -80,4 +84,4 @@ jobs:
           if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
             exit 1
           fi
-          exit 0
+          exit 0G
