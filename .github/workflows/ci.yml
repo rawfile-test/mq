@@ -22,8 +22,8 @@ jobs:
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: |
+          echo "trigger: ;${{ inputs.trigger }};"
           echo "$GITHUB_CONTEXT"
-          echo "trigger: ${{ inputs.trigger }}"
 
   lint-ci:
     if: inputs.trigger != 'merge_group'
