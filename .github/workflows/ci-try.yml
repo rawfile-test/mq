@@ -4,15 +4,6 @@ on:
     types: ['labeled']
 
 jobs:
-  log:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log event name
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: |
-          echo "$GITHUB_CONTEXT"
-
   lint-ci:
     if: contains(github.event.pull_request.labels.*.name, 'ci/test')
     uses: ./.github/workflows/ci.yml
