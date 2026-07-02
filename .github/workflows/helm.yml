@@ -1,0 +1,31 @@
+name: Helm Chart CI
+on:
+  workflow_call:
+    inputs:
+      trigger:
+        description: 'A run may be triggered by pull_request or merge_group'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CI: 1
+
+jobs:
+  helm-chart-test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "RUN"
+
+  helm-images-pr:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.trigger == 'pull_request' }}
+    steps:
+      - run: echo "RUN"
+
+  helm-images:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.trigger != 'pull_request' }}
+    steps:
+      - run: echo "RUN"

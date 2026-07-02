@@ -1,0 +1,86 @@
+name: CI
+on:
+  workflow_call:
+  push:
+    branches:
+      - staging
+      - trying
+  pull_request:
+    types: ['opened', 'edited', 'reopened', 'synchronize', 'labeled']
+  merge_group:
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log event name
+        run: echo "Event name: ${{ github.event_name }}"
+
+  lint-ci:
+    if: github.event.action != 'labeled'
+    uses: ./.github/workflows/lint.yml
+
+  helm-ci:
+    uses: ./.github/workflows/helm.yml
+    secrets: inherit
+    with:
+      trigger: >-
+            ${{
+              startsWith(github.head_ref, 'mergify/merge-queue/')
+                && 'merge_group'
+                || (
+                  github.event_name == 'pull_request'
+                  && contains(github.event.pull_request.labels.*.name, 'ci/test')
+                  && 'labeled'
+                  || github.event_name
+                )
+            }}
+
+  k8s-ci:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci/test') || startsWith(github.head_ref, 'mergify/merge-queue/')
+    uses: ./.github/workflows/k8s-ci.yml
+    secrets: inherit
+
+  ci:
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci/test')) || startsWith(github.head_ref, 'mergify/merge-queue/') }}
+    needs:
+      - lint-ci
+      - helm-ci
+      - k8s-ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI succeeded
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            exit 1
+          fi
+          exit 0
+
+  remove-label:
+    if: ${{ always() && github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ci/test') && startsWith(github.head_ref, 'mergify/merge-queue/')}}
+    needs:
+      - ci
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Remove ci/test label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                name: 'ci/test',
+              });
+            } catch (error) {
+              const status = error.status || error.response?.status;
+              if (status === 403 || status === 404) {
+                const reason = status === 403 ? 'insufficient permissions' : 'label not found';
+                console.log(`Skipping ci/test label removal due to ${reason}: ${error.message}`);
+                return;
+              }
+              throw error;
+            }

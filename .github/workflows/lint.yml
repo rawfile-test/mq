@@ -1,0 +1,17 @@
+name: Linter
+
+on:
+  workflow_call:
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log event name
+        run: echo "Event name: ${{ github.event_name }}"
+
+  linter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR lint step
+        run: echo "Running PR lint checks"

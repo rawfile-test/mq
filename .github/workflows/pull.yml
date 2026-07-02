@@ -1,0 +1,22 @@
+name: Merge Queue Test
+
+on:
+  pull_request:
+    types: ['opened', 'edited', 'reopened', 'synchronize']
+  push:
+    branches:
+      - staging
+  merge_group:
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log event name
+        run: echo "Event name: ${{ github.event_name }}"
+
+  com:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR com step
+        run: echo "Running PR com checks"

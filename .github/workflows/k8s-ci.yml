@@ -1,0 +1,22 @@
+name: K8s CI
+on:
+  workflow_call:
+    inputs:
+      helm-pins:
+        required: false
+        type: boolean
+        default: false
+      registry:
+        required: false
+        type: string
+        default: ghcr.io
+      namespace:
+        required: false
+        type: string
+        default: openebs/helm-pins
+
+jobs:
+  k8s-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "RUN"

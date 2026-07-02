@@ -1,0 +1,29 @@
+queue_rules:
+  - name: default
+    update_method: rebase
+    branch_protection_injection_mode: merge
+    merge_conditions:
+      - check-success = ci
+      - check-success = com
+    queue_conditions:
+      - check-success = com
+      - check-success = helm-ci / helm-images-pr
+      - check-success = helm-ci / helm-chart-test
+      - check-success = lint-ci / linter
+merge_queue:
+  max_parallel_checks: 1
+merge_protections_settings:
+  reporting_method: check-runs
+pull_request_rules:
+  - name: auto-label and approve backport PRs
+    conditions:
+      - author=mergify[bot]
+      - title~=\(backport \#[0-9]+\)$
+    actions:
+      label:
+        add:
+          - kind/backport
+      review:
+        type: APPROVE
+        message: "Automatically approved backport PR"
+        bot_account: openebs-ci
