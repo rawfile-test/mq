@@ -15,7 +15,7 @@ env:
 jobs:
   helm-chart-test:
     runs-on: ubuntu-latest
-    if: ${{ inputs.trigger != 'labeled' }}
+    if: ${{ inputs.trigger != 'try' }}
     steps:
       - env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
