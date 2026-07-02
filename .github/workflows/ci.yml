@@ -14,7 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Log event name
-        run: echo "Event name: ${{ github.event_name }}"
+        run: |
+          echo "Event name: ${{ github.event_name }}"
 
   lint-ci:
     if: github.event.action != 'labeled'
