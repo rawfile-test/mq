@@ -14,8 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Log event name
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
         run: |
-          echo "Event name: ${{ github.event_name }}"
+          echo "$GITHUB_CONTEXT"
 
   lint-ci:
     if: github.event.action != 'labeled'

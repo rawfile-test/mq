@@ -16,7 +16,12 @@ jobs:
   helm-chart-test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "RUN"
+      - env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: |
+          echo "$GITHUB_CONTEXT"
+      - run: |
+          echo "TRIGGER: ${{ inputs.trigger }}"
 
   helm-images-pr:
     runs-on: ubuntu-latest
