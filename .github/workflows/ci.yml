@@ -26,14 +26,14 @@ jobs:
           echo "$GITHUB_CONTEXT"
 
   lint-ci:
-    if: inputs.trigger != 'merge_group'
+    if: ${{ github.event_name == 'pull_request' && inputs.trigger != 'try' }}
     uses: ./.github/workflows/lint.yml
 
   helm-ci:
     uses: ./.github/workflows/helm.yml
     secrets: inherit
     with:
-      trigger: ${{ inputs.trigger == 'merge_group' && 'labeled' || github.event_name }}
+      trigger: ${{ github.event_name }}
 
   k8s-ci:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci/test') || startsWith(github.head_ref, 'mergify/merge-queue/')
