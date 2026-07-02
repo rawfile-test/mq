@@ -15,8 +15,14 @@ env:
 jobs:
   helm-chart-test:
     runs-on: ubuntu-latest
+    if: ${{ inputs.trigger != 'labeled' }}
     steps:
-      - run: echo "RUN"
+      - env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: |
+          echo "$GITHUB_CONTEXT"
+      - run: |
+          echo "TRIGGER: ${{ inputs.trigger }}"
 
   helm-images-pr:
     runs-on: ubuntu-latest
