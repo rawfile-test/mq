@@ -25,24 +25,44 @@ jobs:
           echo "trigger: ;${{ inputs.trigger }};"
           echo "$GITHUB_CONTEXT"
 
+  skip:
+    runs-on: ubuntu-latest
+    outputs:
+      skip-check: ${{ steps.skipper.outputs.skip-check }}
+    steps:
+      - uses: actions/checkout@v6
+        if: github.event_name == 'merge_group'
+      - id: skipper
+        if: github.event_name == 'merge_group'
+        uses: ./.github/actions/merge-queue-ci-skipper
+      - name: Log skip decision
+        run: |
+          echo "event: ${{ github.event_name }}"
+          echo "skip-check: ;${{ steps.skipper.outputs.skip-check }};"
+
   lint-ci:
-    if: inputs.trigger != 'try'
+    needs: skip
+    if: inputs.trigger != 'try' && needs.skip.outputs.skip-check != 'true'
     uses: ./.github/workflows/lint.yml
 
   helm-ci:
+    needs: skip
+    if: needs.skip.outputs.skip-check != 'true'
     uses: ./.github/workflows/helm.yml
     secrets: inherit
     with:
       trigger: ${{  inputs.trigger == 'try' && 'try' ||  startsWith(github.head_ref, 'mergify/merge-queue/') && 'merge_group' ||  github.event_name}}
 
   k8s-ci:
-    if: github.event_name != 'pull_request' || inputs.trigger == 'try' || startsWith(github.head_ref, 'mergify/merge-queue/')
+    needs: skip
+    if: needs.skip.outputs.skip-check != 'true' && (github.event_name != 'pull_request' || inputs.trigger == 'try' || startsWith(github.head_ref, 'mergify/merge-queue/'))
     uses: ./.github/workflows/k8s-ci.yml
     secrets: inherit
 
   ci:
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || inputs.trigger == 'try' || startsWith(github.head_ref, 'mergify/merge-queue/')) }}
     needs:
+      - skip
       - lint-ci
       - helm-ci
       - k8s-ci
@@ -50,6 +70,7 @@ jobs:
     steps:
       - name: CI succeeded
         run: |
+          echo "skip-check: ;${{ needs.skip.outputs.skip-check }};"
           if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
             exit 1
           fi
