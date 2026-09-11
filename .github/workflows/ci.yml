@@ -27,18 +27,23 @@ jobs:
 
   skip:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
     outputs:
-      skip-check: ${{ steps.skipper.outputs.skip-check }}
+      skip-check: ${{ steps.skipper.outputs.skip }}
     steps:
       - uses: actions/checkout@v6
         if: github.event_name == 'merge_group'
       - id: skipper
         if: github.event_name == 'merge_group'
-        uses: ./.github/actions/merge-queue-ci-skipper
+        uses: ./.github/actions/merge-queue-skip
       - name: Log skip decision
+        env:
+          SKIP: ${{ steps.skipper.outputs.skip }}
         run: |
           echo "event: ${{ github.event_name }}"
-          echo "skip-check: ;${{ steps.skipper.outputs.skip-check }};"
+          echo "skip-check: ;${SKIP};"
 
   lint-ci:
     needs: skip

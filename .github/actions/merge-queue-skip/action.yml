@@ -1,0 +1,125 @@
+name: Merge Queue CI Skip
+description: >
+  For a merge_group run, decides whether CI can be skipped because the exact same
+  tree has already been verified on the pull request. Works for fork PRs: the PR
+  head is taken from the merge-group commit's second parent, not from a branch name.
+  Any failed precondition results in skip=false (i.e. run CI).
+inputs:
+  token:
+    description: Token with contents:read and checks:read on this repository.
+    required: false
+    default: ${{ github.token }}
+outputs:
+  skip:
+    description: "'true' only when every precondition holds; otherwise 'false'."
+    value: ${{ steps.result.outputs.skip }}
+runs:
+  using: composite
+  steps:
+    - name: Verify merge-group commit against base and PR head
+      id: git
+      if: github.event_name == 'merge_group'
+      shell: bash
+      env:
+        BASE_REF: ${{ github.event.merge_group.base_ref }}
+        BASE_SHA: ${{ github.event.merge_group.base_sha }}
+        HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+      run: |
+        set -euo pipefail
+        echo "ok=false" >> "$GITHUB_OUTPUT"
+
+        # Merge-group commit plus its two parents (base and PR head).
+        git fetch --no-tags --depth=2 origin "$HEAD_SHA"
+
+        if [[ "$(git rev-list --parents -n1 "$HEAD_SHA" | wc -w)" -ne 3 ]]; then
+          echo "::notice::Merge-group commit $HEAD_SHA is not a two-parent merge; running CI."
+          exit 0
+        fi
+        parent1=$(git rev-parse "$HEAD_SHA^1")
+        pr_head=$(git rev-parse "$HEAD_SHA^2")
+        echo "pr-head=$pr_head" >> "$GITHUB_OUTPUT"
+
+        if [[ "$parent1" != "$BASE_SHA" ]]; then
+          echo "::notice::First parent $parent1 != merge_group.base_sha $BASE_SHA; running CI."
+          exit 0
+        fi
+
+        # Head of queue and base has not moved since enqueue.
+        base_head=$(git ls-remote --exit-code origin "$BASE_REF" | cut -f1)
+        if [[ "$base_head" != "$BASE_SHA" ]]; then
+          echo "::notice::$BASE_REF is at $base_head but merge group is based on $BASE_SHA (not head of queue, or base moved); running CI."
+          exit 0
+        fi
+
+        # The merged tree must be byte-identical to what the PR run tested.
+        if ! git diff --quiet "$HEAD_SHA" "$pr_head"; then
+          echo "::notice::Merge-group tree differs from PR head $pr_head; running CI."
+          exit 0
+        fi
+
+        echo "Merge group $HEAD_SHA is head of queue on $BASE_REF and identical to PR head $pr_head."
+        echo "ok=true" >> "$GITHUB_OUTPUT"
+
+    - name: Verify required checks succeeded on PR head
+      id: checks
+      if: steps.git.outputs.ok == 'true'
+      uses: actions/github-script@v9
+      env:
+        PR_HEAD: ${{ steps.git.outputs.pr-head }}
+        BASE_BRANCH: ${{ github.event.merge_group.base_ref }}
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const { owner, repo } = context.repo;
+          const branch = process.env.BASE_BRANCH.replace(/^refs\/heads\//, '');
+          const required = new Set();
+
+          // Classic branch protection (readable without admin via "get a branch").
+          const { data: br } = await github.rest.repos.getBranch({ owner, repo, branch });
+          for (const c of br.protection?.required_status_checks?.checks ?? []) required.add(c.context);
+          for (const c of br.protection?.required_status_checks?.contexts ?? []) required.add(c);
+
+          // Rulesets that apply to the branch.
+          const { data: rules } = await github.request('GET /repos/{owner}/{repo}/rules/branches/{branch}', { owner, repo, branch });
+          for (const rule of rules) {
+            if (rule.type !== 'required_status_checks') continue;
+            for (const c of rule.parameters?.required_status_checks ?? []) required.add(c.context);
+          }
+
+          if (required.size === 0) {
+            core.notice(`No required status checks configured for ${branch}; cannot prove the PR run passed, running CI.`);
+            core.setOutput('ok', 'false');
+            return;
+          }
+          core.info(`Required checks on ${branch}: ${[...required].join(', ')}`);
+
+          const runs = await github.paginate(github.rest.checks.listForRef, {
+            owner, repo, ref: process.env.PR_HEAD, per_page: 100,
+          });
+          const passed = new Set(runs
+            .filter(r => r.status === 'completed' && r.conclusion === 'success')
+            .map(r => r.name));
+          core.info(`Successful check runs on ${process.env.PR_HEAD}: ${[...passed].join(', ') || '(none)'}`);
+
+          const missing = [...required].filter(name => !passed.has(name));
+          if (missing.length > 0) {
+            core.notice(`Required checks not successful on PR head, running CI: ${missing.join(', ')}`);
+            core.setOutput('ok', 'false');
+          } else {
+            core.info('All required checks succeeded on PR head.');
+            core.setOutput('ok', 'true');
+          }
+
+    - name: Result
+      id: result
+      shell: bash
+      env:
+        GIT_OK: ${{ steps.git.outputs.ok }}
+        CHECKS_OK: ${{ steps.checks.outputs.ok }}
+      run: |
+        if [[ "$GIT_OK" == "true" && "$CHECKS_OK" == "true" ]]; then
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          echo "::notice::CI already verified this exact tree on the PR; skipping merge-queue CI."
+        else
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+        fi
